@@ -1,0 +1,19 @@
+spin_manifest_version = 2
+
+[application]
+name = "test-dynamo"
+version = "0.1.0"
+authors = ["Darwin Boersma <darwin@sadlark.com>"]
+description = ""
+
+[[trigger.http]]
+route = "/..."
+component = "test-dynamo"
+
+[component.test-dynamo]
+source = "target/wasm32-wasip2/release/test_dynamo.wasm"
+allowed_outbound_hosts = []
+key_value_stores = ["default"]
+[component.test-dynamo.build]
+command = "cargo build --target wasm32-wasip2 --release"
+watch = ["src/**/*.rs", "Cargo.toml"]

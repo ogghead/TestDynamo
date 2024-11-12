@@ -1,0 +1,4 @@
+[key_value_store.default]
+type = "aws_dynamo"
+region = "us-east-1"
+table = "TestTable"
