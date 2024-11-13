@@ -2,3 +2,4 @@
 type = "aws_dynamo"
 region = "us-east-1"
 table = "TestTable"
+consistent_read = true

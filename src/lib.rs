@@ -1,4 +1,4 @@
-use spin_sdk::http::{IntoResponse, Request, Response};
+use spin_sdk::http::{IntoResponse, Request, Response, Router};
 use spin_sdk::http_component;
 use spin_sdk::wit::wasi::keyvalue::atomics;
 use spin_sdk::wit::wasi::keyvalue::batch;
@@ -10,66 +10,137 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     println!("Handling request to {:?}", req.header("spin-full-url"));
 
     let store = open("default")?;
-    let res = store.exists("foo")?;
-    println!("exists? {res}");
-    store.set("foo", b"foo")?;
-    let res = store.exists("foo")?;
-    println!("keys: {:?}", store.list_keys(None)?);
 
+    let key = "foo";
+    let key2 = "foo2";
+    let val = b"valfoo";
+    let val2 = b"valfoo2";
+
+    println!("Simple ops");
+
+    println!("Delete");
+    store.delete(key)?;
+
+    println!("Checking existence of deleted object");
+    assert!(!(store.exists(key)?));
+
+    println!("Get on deleted object");
+    assert_eq!(store.get(key)?, None);
+
+    println!("Put");
+    store.set(key, val)?;
+
+    println!("Exists on existing object");
+    assert!((store.exists(key)?));
+
+    println!("Get on existing object");
+    assert_eq!(store.get(key)?.unwrap(), val);
+
+    println!("Cleanup");
+    store.delete(key)?;
+
+    println!("Bulk ops");
+
+    println!("Bulk delete");
+    batch::delete_many(&store, &[key.to_owned(), key2.to_owned()])?;
+
+    println!("Bulk get on missing objects");
+    assert_eq!(
+        batch::get_many(&store, &[key.to_owned(), key2.to_owned()])?,
+        vec![]
+    );
+
+    println!("Bulk set");
     batch::set_many(
         &store,
         &[
-            ("foo".to_string(), b"newnewval".to_vec()),
-            ("foo2".to_string(), b"newnewval2".to_vec()),
+            (key.to_owned(), val.to_vec()),
+            (key2.to_owned(), val2.to_vec()),
         ],
     )?;
-    let results = batch::get_many(
-        &store,
-        &["foo".to_string(), "foo2".to_string(), "foo3".to_string()],
-    )?;
+
+    println!("Bulk get on existing objects");
     assert_eq!(
-        results,
+        batch::get_many(&store, &[key.to_owned(), key2.to_owned()])?,
         vec![
-            ("foo".to_string(), Some(b"newnewval".to_vec())),
-            ("foo2".to_string(), Some(b"newnewval2".to_vec())),
+            (key.to_owned(), Some(val.to_vec())),
+            (key2.to_owned(), Some(val2.to_vec())),
         ]
     );
-    batch::delete_many(&store, &["foo".to_string(), "foo2".to_string()])?;
-    println!("finished all batch ops!");
 
-    println!("keys: {:?}", store.list_keys(None)?);
+    println!("Cleanup");
+    batch::delete_many(&store, &[key.to_owned(), key2.to_owned()])?;
 
-    let newincr = atomics::increment(&store, "foo2", 1)?;
-    println!("incremented {newincr}");
+    println!("Atomics");
+    store.delete(key)?;
 
-    store.set("foo", b"foo")?;
+    println!("Increment");
+    assert_eq!(atomics::increment(&store, key, 1)?, 1);
+    assert_eq!(atomics::increment(&store, key, 1)?, 2);
 
-    let cas = atomics::Cas::new(&store, "foo")?;
-    let old_val = cas.current()?;
-    assert_eq!(old_val, Some(b"foo".to_vec()));
-    atomics::swap(cas, b"foo2")?;
+    store.delete(key)?;
 
-    let cas2 = atomics::Cas::new(&store, "foo")?;
-    let old_val = cas2.current()?;
-    atomics::swap(cas2, b"foo3")?;
+    store.set(key, val)?;
 
-    let new_val = store.get("foo")?;
-    assert_eq!(new_val.unwrap().as_slice(), b"foo3");
+    println!("Two handles, unknown object (no read), both write successfully but atomically");
+    let cas1 = atomics::Cas::new(&store, key)?;
+    let cas2 = atomics::Cas::new(&store, key)?;
 
-    let cas3 = atomics::Cas::new(&store, "foonone")?;
-    assert!(cas3.current().is_ok());
-    let cas4 = atomics::Cas::new(&store, "foonone")?;
-    assert!(cas4.current().is_err());
-    assert!(atomics::swap(cas3, b"foo5").is_ok());
-    println!("swapped foonone");
-    assert!(cas4.current().is_ok());
+    println!("Atomic write");
+    atomics::swap(cas1, val)?;
+    println!("Overwrite");
+    atomics::swap(cas2, val2)?;
 
-    assert!(atomics::swap(cas4, b"shouldfail").is_ok());
+    println!("Two handles, read object with version, only one writes successfully");
+    let cas1 = atomics::Cas::new(&store, key)?;
+    let cas2 = atomics::Cas::new(&store, key)?;
+    cas1.current()?;
+    cas2.current()?;
 
-    let new_val = store.get("foonone")?.unwrap();
-    assert_eq!(new_val, b"shouldfail");
+    println!("Succeeds");
+    atomics::swap(cas1, val)?;
 
-    store.delete("foonone")?;
+    println!("Fails");
+    let res = atomics::swap(cas2, val2);
+    if let Err(err) = res {
+        match err {
+            atomics::CasError::StoreError(error) => todo!("got store"),
+            atomics::CasError::CasFailed(cas) => todo!("got cas back!"),
+        }
+    }
+
+    println!("Two handles, read object without version, only one writes successfully");
+
+    println!("Set to unversioned");
+    store.set(key, val)?;
+
+    let cas1 = atomics::Cas::new(&store, key)?;
+    let cas2 = atomics::Cas::new(&store, key)?;
+    cas1.current()?;
+    cas2.current()?;
+
+    println!("Succeeds");
+    atomics::swap(cas1, val)?;
+
+    println!("Fails");
+    assert!(atomics::swap(cas2, val2).is_err());
+
+    println!("Two handles, read nonexistent object, only one writes successfully");
+    store.delete(key)?;
+
+    let cas1 = atomics::Cas::new(&store, key)?;
+    let cas2 = atomics::Cas::new(&store, key)?;
+    cas1.current()?;
+    cas2.current()?;
+
+    println!("Succeeds");
+    atomics::swap(cas1, val)?;
+
+    println!("Fails");
+    assert!(atomics::swap(cas2, val2).is_err());
+
+    println!("Cleanup");
+    store.delete(key)?;
 
     Ok(Response::builder()
         .status(200)
