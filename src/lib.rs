@@ -1,8 +1,8 @@
-use spin_sdk::http::{IntoResponse, Request, Response, Router};
+use spin_sdk::http::{IntoResponse, Request, Response};
 use spin_sdk::http_component;
-use spin_sdk::wit::wasi::keyvalue::atomics;
-use spin_sdk::wit::wasi::keyvalue::batch;
-use spin_sdk::wit::wasi::keyvalue::store::open;
+use spin_sdk::wit::wasi::keyvalue::{atomics, batch, store::open};
+use std::thread::sleep;
+use std::time::Duration;
 
 /// A simple Spin HTTP component.
 #[http_component]
@@ -44,11 +44,11 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     println!("Bulk delete");
     batch::delete_many(&store, &[key.to_owned(), key2.to_owned()])?;
 
+    // For now needed due to caching
+    sleep(Duration::from_secs(1));
+
     println!("Bulk get on missing objects");
-    assert_eq!(
-        batch::get_many(&store, &[key.to_owned(), key2.to_owned()])?,
-        vec![]
-    );
+    assert!(batch::get_many(&store, &[key.to_owned(), key2.to_owned()])?.is_empty());
 
     println!("Bulk set");
     batch::set_many(
@@ -80,15 +80,30 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
 
     store.delete(key)?;
 
-    store.set(key, val)?;
-
-    println!("Two handles, unknown object (no read), both write successfully but atomically");
+    println!(
+        "Two handles, missing and unknown object (no read), both write successfully but atomically"
+    );
     let cas1 = atomics::Cas::new(&store, key)?;
     let cas2 = atomics::Cas::new(&store, key)?;
 
-    println!("Atomic write");
+    println!("Succeeds 1");
     atomics::swap(cas1, val)?;
-    println!("Overwrite");
+    println!("Succeeds 2");
+    atomics::swap(cas2, val2)?;
+
+    store.delete(key)?;
+
+    store.set(key, val)?;
+
+    println!(
+        "Two handles, existing but unknown object (no read), both write successfully but atomically"
+    );
+    let cas1 = atomics::Cas::new(&store, key)?;
+    let cas2 = atomics::Cas::new(&store, key)?;
+
+    println!("Succeeds 1");
+    atomics::swap(cas1, val)?;
+    println!("Succeeds 2");
     atomics::swap(cas2, val2)?;
 
     println!("Two handles, read object with version, only one writes successfully");
@@ -97,17 +112,11 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     cas1.current()?;
     cas2.current()?;
 
-    println!("Succeeds");
+    println!("Succeeds 1");
     atomics::swap(cas1, val)?;
 
-    println!("Fails");
-    let res = atomics::swap(cas2, val2);
-    if let Err(err) = res {
-        match err {
-            atomics::CasError::StoreError(error) => todo!("got store"),
-            atomics::CasError::CasFailed(cas) => todo!("got cas back!"),
-        }
-    }
+    println!("Fails 2");
+    assert!(atomics::swap(cas2, val2).is_err());
 
     println!("Two handles, read object without version, only one writes successfully");
 
@@ -119,10 +128,10 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     cas1.current()?;
     cas2.current()?;
 
-    println!("Succeeds");
-    atomics::swap(cas1, val)?;
+    println!("Succeeds 1");
+    atomics::swap(cas1, val2)?;
 
-    println!("Fails");
+    println!("Fails 2");
     assert!(atomics::swap(cas2, val2).is_err());
 
     println!("Two handles, read nonexistent object, only one writes successfully");
@@ -133,11 +142,15 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     cas1.current()?;
     cas2.current()?;
 
-    println!("Succeeds");
+    println!("Succeeds 1");
     atomics::swap(cas1, val)?;
 
-    println!("Fails");
-    assert!(atomics::swap(cas2, val2).is_err());
+    println!("Fails 2");
+    let res = atomics::swap(cas2, val2);
+    assert!(res.is_err());
+    if let Err(atomics::CasError::CasFailed(newcas2)) = res {
+        atomics::swap(newcas2, val2)?;
+    }
 
     println!("Cleanup");
     store.delete(key)?;

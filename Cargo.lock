@@ -19,9 +19,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.89"
+version = "1.0.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86fdf8605db99b54d3cd748a44c6d04df638eb5dafb219b135d0149bd0db01f6"
+checksum = "4c95c10ba0b00a02636238b814946408b1322d5ac4760326e6fb8ec956d85775"
 
 [[package]]
 name = "async-trait"
@@ -60,9 +60,9 @@ checksum = "9ac0150caa2ae65ca5bd83f25c7de183dea78d4d366469f148435e2acfbad0da"
 
 [[package]]
 name = "cc"
-version = "1.1.37"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40545c26d092346d8a8dab71ee48e7685a7a9cba76e634790c215b41a4a7b4cf"
+checksum = "fd9de9f2205d5ef3fd67e685b0df337994ddd4495e2a28d185500d0e1edfea47"
 dependencies = [
  "shlex",
 ]
@@ -383,18 +383,18 @@ checksum = "61697e0a1c7e512e84a621326239844a24d8207b4669b41bc18b32ea5cbf988b"
 
 [[package]]
 name = "serde"
-version = "1.0.214"
+version = "1.0.215"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f55c3193aca71c12ad7890f1785d2b73e1b9f63a0bbc353c08ef26fe03fc56b5"
+checksum = "6513c1ad0b11a9376da888e3e0baa0077f1aed55c17f50e7b2397136129fb88f"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.214"
+version = "1.0.215"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de523f781f095e28fa605cdce0f8307e451cc0fd14e2eb4cd2e98a355b147766"
+checksum = "ad1e866f866923f252f05c889987993144fb74e722403468a4ebd70c3cd756c0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -465,8 +465,8 @@ dependencies = [
 
 [[package]]
 name = "spin-executor"
-version = "3.0.1"
-source = "git+https://github.com/fermyon/spin-rust-sdk#5e82d1a72da5771cc12bc22ee0798bef452c1472"
+version = "3.1.0"
+source = "git+https://github.com/fermyon/spin-rust-sdk#d373a7907e64b077ca865504d65ee3325939e101"
 dependencies = [
  "futures",
  "once_cell",
@@ -475,8 +475,8 @@ dependencies = [
 
 [[package]]
 name = "spin-macro"
-version = "3.0.1"
-source = "git+https://github.com/fermyon/spin-rust-sdk#5e82d1a72da5771cc12bc22ee0798bef452c1472"
+version = "3.1.0"
+source = "git+https://github.com/fermyon/spin-rust-sdk#d373a7907e64b077ca865504d65ee3325939e101"
 dependencies = [
  "anyhow",
  "bytes",
@@ -487,8 +487,8 @@ dependencies = [
 
 [[package]]
 name = "spin-sdk"
-version = "3.0.1"
-source = "git+https://github.com/fermyon/spin-rust-sdk#5e82d1a72da5771cc12bc22ee0798bef452c1472"
+version = "3.1.0"
+source = "git+https://github.com/fermyon/spin-rust-sdk#d373a7907e64b077ca865504d65ee3325939e101"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -545,18 +545,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02dd99dc800bbb97186339685293e1cc5d9df1f8fae2d0aecd9ff1c77efea892"
+checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.68"
+version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7c61ec9a6f64d2793d8a45faba21efbe3ced62a886d44c36a009b2b519b4c7e"
+checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
 dependencies = [
  "proc-macro2",
  "quote",
