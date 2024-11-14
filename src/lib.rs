@@ -44,9 +44,6 @@ fn handle_test_dynamo(req: Request) -> anyhow::Result<impl IntoResponse> {
     println!("Bulk delete");
     batch::delete_many(&store, &[key.to_owned(), key2.to_owned()])?;
 
-    // For now needed due to caching
-    sleep(Duration::from_secs(1));
-
     println!("Bulk get on missing objects");
     assert!(batch::get_many(&store, &[key.to_owned(), key2.to_owned()])?.is_empty());
 
