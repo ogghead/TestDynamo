@@ -1,8 +1,6 @@
 use spin_sdk::http::{IntoResponse, Request, Response};
 use spin_sdk::http_component;
 use spin_sdk::wit::wasi::keyvalue::{atomics, batch, store::open};
-use std::thread::sleep;
-use std::time::Duration;
 
 /// A simple Spin HTTP component.
 #[http_component]
